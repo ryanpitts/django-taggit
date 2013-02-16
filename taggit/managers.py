@@ -166,8 +166,18 @@ class _TaggableManager(models.Manager):
             name__in=str_tags
         )
         tag_objs.update(existing)
+        
+        # patch for case-insensitivity when saving tags
+        # https://github.com/oxys-net/django-taggit/commit/bbef10f37a9d7e78ad83193cf2851bd20442a44e
+        existing = set(t.name.lower() for t in existing)
+        tags_to_create = [ tag for tag in str_tags if tag.lower() not in existing ]
+        print tags_to_create
+        _created = []
 
-        for new_tag in str_tags - set(t.name for t in existing):
+        for new_tag in tags_to_create:
+            if new_tag.lower() in _created:
+                continue
+            _created.append(new_tag.lower())
             tag_objs.add(self.through.tag_model().objects.create(name=new_tag))
 
         for tag in tag_objs:
