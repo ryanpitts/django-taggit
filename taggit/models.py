@@ -47,7 +47,7 @@ class TagBase(models.Model):
     def slugify(self, tag, i=None):
         slug = default_slugify(tag)
         if i is not None:
-            slug += "_%d" % i
+            slug += "-%d" % i
         return slug
 
 

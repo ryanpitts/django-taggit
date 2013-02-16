@@ -3,6 +3,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models.fields.related import ManyToManyRel, RelatedField, add_lazy_relation
 from django.db.models.related import RelatedObject
+from django.template.defaultfilters import slugify as default_slugify
 from django.utils.text import capfirst
 from django.utils.translation import ugettext_lazy as _
 
@@ -160,18 +161,20 @@ class _TaggableManager(models.Manager):
             if not isinstance(t, self.through.tag_model())
         ])
         tag_objs = set(tags) - str_tags
-        # If str_tags has 0 elements Django actually optimizes that to not do a
-        # query.  Malcolm is very smart.
-        existing = self.through.tag_model().objects.filter(
-            name__in=str_tags
-        )
-        tag_objs.update(existing)
         
         # patch for case-insensitivity when saving tags
-        # https://github.com/oxys-net/django-taggit/commit/bbef10f37a9d7e78ad83193cf2851bd20442a44e
+        # yes, it sucks to loop through queries like this
+        existing = set([])
+        for tag in str_tags:
+            found_tag = self.through.tag_model().objects.filter(
+                name__iexact=tag
+            )
+            if found_tag:
+                existing.update(found_tag)
+        tag_objs.update(existing)
+        
         existing = set(t.name.lower() for t in existing)
         tags_to_create = [ tag for tag in str_tags if tag.lower() not in existing ]
-        print tags_to_create
         _created = []
 
         for new_tag in tags_to_create:
